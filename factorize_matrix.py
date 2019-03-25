@@ -4,6 +4,7 @@ import argparse
 import time
 import csv
 import sys
+import os
 
 def constructArguments():
   parser = argparse.ArgumentParser()
@@ -137,14 +138,6 @@ def RMSE(nU, nV, M, non_zero_entries):
 
 
 if __name__ == "__main__":
-
-    # For Toy Ratings Dataset
-    # n = 3
-    # m = 3
-    # d = 2
-    # T = 100
-
-    # For Movie Ratings Dataset
     n = 943
     m = 1682
     d = 20
@@ -163,18 +156,15 @@ if __name__ == "__main__":
 
         for line in lines:
             userid = int(line[0])
-            if userid > n:
-                break
-            else:
-                movieid = int(line[1])
-                rating = int(line[2])
-                data[userid][movieid] = rating
-                all_movies.add(movieid)
-                all_users.add(userid)
+            movieid = int(line[1])
+            rating = int(line[2])
+            data[userid][movieid] = rating
+            all_movies.add(movieid)
+            all_users.add(userid)
 
-        all_movies = sorted(all_movies)
+        all_movies = list(all_movies)
         all_movies = all_movies[:m]
-        all_users = sorted(all_users)
+        all_users = list(all_users)
 
         non_zero_entries=0
         for x in range(0,n):
@@ -185,21 +175,25 @@ if __name__ == "__main__":
                     M[x,y] = data[user][movie]
                     non_zero_entries += 1
 
+    user_np = np.asarray(all_users, dtype=np.float32)
+    movie_np = np.asarray(all_movies, dtype=np.float32)
+
     U = np.random.rand(n,d)
     V = np.random.rand(m,d)
     start_time = time.time()
     nU, nV = matrix_factorization(M, U, V, T, d, non_zero_entries)
 
-    # nM = np.dot(nU, nV.T)
-    # print("Original M (Ratings):")
-    # print(M)
-    # print("\n")
-    # print("Predicted M (Ratings):")
-    # print(nM)
-    # print("\n")
     RMSE(nU, nV, M, non_zero_entries)
+
     elapsed_time = time.time() - start_time
     print("Time elapsed:", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
-    np.savetxt('UT.tsv', nU, fmt='%.18e', delimiter='\t', newline='\n')
 
-    # End of working code
+    user_np = np.reshape(user_np, (n,1))
+    UT = np.concatenate((user_np, nU), axis=1)
+    os.remove('UT.tsv')
+    np.savetxt('UT.tsv', UT, delimiter="\t", fmt="%s")
+
+    movie_np = np.reshape(movie_np, (m,1))
+    VT = np.concatenate((movie_np, nV), axis=1)
+    os.remove('VT.tsv')
+    np.savetxt('VT.tsv', VT, delimiter="\t", fmt="%s")
